@@ -19,8 +19,9 @@ return new class extends Migration
             $table->date('StartDate');
             $table->date('EndDate');
             $table->string('CreatedBy');
+            $table->string('AnnouncementFile')->nullable(); // Add file upload field for announcements
             $table->timestamps();
-
+            
             $table->foreign('TypeID')->references('TypeID')->on('scholarship_types')->onDelete('cascade');
             $table->foreign('CreatedBy')->references('AcademicID')->on('academics')->onDelete('cascade');
         });

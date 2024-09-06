@@ -30,6 +30,30 @@ class ApplicationInternalController extends Controller
         return response()->json($applications);
     }
 
+    public function filterByScholarshipId($scholarshipId)
+    {
+        // Query applications and filter by scholarship ID
+        $applications = ApplicationInternal::with([
+            'student',
+            'scholarship',
+            'applicationFiles',
+            'addresses',
+            'siblings',
+            'scholarshipHistories',
+            'guardians',
+            'activities',
+            'workExperiences',
+        ])
+        ->where('ScholarshipID', $scholarshipId) // Filter by ScholarshipID
+        ->get(); // Get all results that match the ScholarshipID
+    
+        return response()->json($applications);
+    }
+    
+    
+    
+
+
     public function generatePdf($id)
     {
         $application = ApplicationInternal::with([
@@ -123,6 +147,52 @@ public function store(Request $request)
         return response()->json($applications);
     }
     
+// Get students who applied for the specified ScholarshipID
+public function getStudentsByScholarshipId($scholarshipId)
+{
+    // Filter applications by ScholarshipID and load related student data
+    $applications = ApplicationInternal::with([
+            'student', // Load student information
+        ])
+        ->where('ScholarshipID', $scholarshipId) // Filter by ScholarshipID
+        ->get(); // Get all results that match the ScholarshipID
+
+    return response()->json($applications);
+}
+
+// Get specific student who applied for the specified ScholarshipID along with related data
+public function getStudentByScholarshipIdAndStudentId($scholarshipId, $studentId)
+{
+    // Filter applications by ScholarshipID and StudentID and load related data
+    $application = ApplicationInternal::with([
+            'student',               // Load student information
+            'scholarship',           // Load scholarship information
+            'applicationFiles',      // Load application files
+            'addresses',             // Load addresses
+            'siblings',              // Load sibling information
+            'scholarshipHistories',  // Load scholarship history
+            'guardians',             // Load guardian information
+            'activities',            // Load activities
+            'workExperiences',       // Load work experience
+        ])
+        ->where('ScholarshipID', $scholarshipId) // Filter by ScholarshipID
+        ->where('StudentID', $studentId) // Filter by StudentID
+        ->first(); // Get the specific result that matches both
+
+    return response()->json($application);
+}
+
+
+public function updateApplicationInternal(Request $request, $id) {
+    $application = ApplicationInternal::find($id);
+    if ($application) {
+        $application->Status = $request->input('Status');
+        $application->save();
+        return response()->json(['message' => 'Application updated successfully.']);
+    }
+    return response()->json(['error' => 'Application not found.'], 404);
+}
+
 
 
 

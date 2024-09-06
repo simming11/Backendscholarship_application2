@@ -19,7 +19,7 @@ return [
 
     'allowed_methods' => ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
 
-    'allowed_origins' => ['https://dac1-103-86-131-113.ngrok-free.app', 'http://localhost:3000'],
+    'allowed_origins' => ['*','http://localhost:3000'],
 
     'allowed_origins_patterns' => [],
 
