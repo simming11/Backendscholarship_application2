@@ -258,13 +258,15 @@ Route::prefix('application-internals')->group(function () {
         Route::delete('/{id}', [ReportController::class, 'destroy']); // Delete a report
     });
 
-    // Routes for Line Notify
-    Route::prefix('line-notifies')->group(function () {
-        Route::get('/', [LineNotifyController::class, 'index']); // Get all line notifies
-        Route::post('/', [LineNotifyController::class, 'store']); // Create a new line notify
-        Route::get('/{id}', [LineNotifyController::class, 'show']); // Get a single line notify
-        Route::put('/{id}', [LineNotifyController::class, 'update']); // Update a line notify
-        Route::delete('/{id}', [LineNotifyController::class, 'destroy']); // Delete a line notify
-    });
+// เส้นทางสำหรับ LineNotify
+Route::prefix('line-notifies')->group(function () {
+    Route::get('/', [LineNotifyController::class, 'index']); // Get all line notifies
+    Route::post('/', [LineNotifyController::class, 'store']); // Create a new line notify
+    Route::get('/{id}', [LineNotifyController::class, 'show']); // Get a single line notify
+    Route::put('/academic/{academicID}', [LineNotifyController::class, 'updateByAcademicID']); // อัปเดตตาม AcademicID
+    Route::delete('/{id}', [LineNotifyController::class, 'destroy']); // Delete a line notify
+    Route::get('/academic/{academicID}', [LineNotifyController::class, 'getByAcademicID']);
+});
+
 
 });

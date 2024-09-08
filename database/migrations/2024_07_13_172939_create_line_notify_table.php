@@ -12,10 +12,12 @@ return new class extends Migration
     {
         Schema::create('line_notifies', function (Blueprint $table) {
             $table->id('LineNotifyID');
-            $table->string('StudentID', 10);
-            $table->string('LineToken');
-            $table->date('SentDate');
-            $table->foreign('StudentID')->references('StudentID')->on('students')->onDelete('cascade');
+            $table->string('AcademicID', 13)->nullable();
+            $table->string('LineToken')->nullable();
+            $table->string('notify_client_id')->nullable(); // Column for storing the client ID
+            $table->string('client_secret')->nullable();    // Column for storing the client secret
+            $table->date('SentDate')->nullable();
+            $table->foreign('AcademicID')->references('AcademicID')->on('academics')->onDelete('cascade');
             $table->timestamps();
         });
     }

@@ -19,40 +19,52 @@ class LineNotifyController extends Controller
         return response()->json($lineNotifies);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
+
+    public function getByAcademicID($academicID)
+{
+    // ค้นหา LineNotify ตาม AcademicID
+    $lineNotifies = LineNotify::where('AcademicID', $academicID)->get();
+
+    // ตรวจสอบว่าพบข้อมูลหรือไม่
+    if ($lineNotifies->isEmpty()) {
+        return response()->json(['message' => 'No LineNotify found for this AcademicID'], 404);
+    }
+
+    return response()->json($lineNotifies);
+}
+
+    
+
     public function store(Request $request)
     {
+        // ตรวจสอบค่าอื่นๆ ยกเว้น LineToken
         $validator = Validator::make($request->all(), [
-            'StudentID' => 'required|exists:students,StudentID',
-            'LineToken' => 'required|string',
-            'SentDate' => 'required|date_format:Y-m-d',
-            'Message' => 'required|string',
+            'SentDate' => 'date_format:Y-m-d',
+            'notify_client_id' => 'required|string',
+            'client_secret' => 'required|string',
+            'AcademicID' => 'required|exists:academics,AcademicID',
         ]);
-
+    
         if ($validator->fails()) {
             return response()->json($validator->errors(), 422);
         }
-
+    
+        // สร้าง LineNotify object และบันทึกลงฐานข้อมูล โดยไม่มี LineToken
         $lineNotify = new LineNotify([
-            'StudentID' => $request->get('StudentID'),
-            'LineToken' => $request->get('LineToken'),
             'SentDate' => $request->get('SentDate'),
+            'notify_client_id' => $request->get('notify_client_id'),
+            'client_secret' => $request->get('client_secret'),
+            'AcademicID' => $request->get('AcademicID'),
         ]);
-
-        // Send notification to Line
-        $response = $this->sendLineNotification($request->get('LineToken'), $request->get('Message'));
-
-        // Check if response is successful
-        if ($response->status() !== 200) {
-            return response()->json(['message' => 'Failed to send notification to Line', 'error' => $response->body()], $response->status());
-        }
-
+    
         $lineNotify->save();
-
+    
         return response()->json($lineNotify, 201);
     }
+    
+
+
+
 
     /**
      * Display the specified resource.
@@ -67,43 +79,43 @@ class LineNotifyController extends Controller
         }
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, $id)
+    public function updateByAcademicID(Request $request, $academicID)
     {
         $validator = Validator::make($request->all(), [
-            'StudentID' => 'required|exists:students,StudentID',
-            'LineToken' => 'required|string',
-            'SentDate' => 'required|date_format:Y-m-d',
-            'Message' => 'required|string',
+            'LineToken' => 'nullable|string',
+            'notify_client_id' => 'nullable|string',
+            'client_secret' => 'nullable|string',
         ]);
-
+    
         if ($validator->fails()) {
             return response()->json($validator->errors(), 422);
         }
-
-        $lineNotify = LineNotify::find($id);
+    
+        // ค้นหา LineNotify ตาม AcademicID
+        $lineNotify = LineNotify::where('AcademicID', $academicID)->first();
+    
         if ($lineNotify) {
-            $lineNotify->StudentID = $request->get('StudentID', $lineNotify->StudentID);
-            $lineNotify->LineToken = $request->get('LineToken', $lineNotify->LineToken);
-            $lineNotify->SentDate = $request->get('SentDate', $lineNotify->SentDate);
-
-            // Send notification to Line
-            $response = $this->sendLineNotification($request->get('LineToken'), $request->get('Message'));
-
-            // Check if response is successful
-            if ($response->status() !== 200) {
-                return response()->json(['message' => 'Failed to send notification to Line', 'error' => $response->body()], $response->status());
+            // อัปเดตฟิลด์ต่าง ๆ ถ้ามีการส่งค่ามา
+            if ($request->has('LineToken')) {
+                $lineNotify->LineToken = $request->get('LineToken');
             }
-
+            $lineNotify->notify_client_id = $request->get('notify_client_id', $lineNotify->notify_client_id);
+            $lineNotify->client_secret = $request->get('client_secret', $lineNotify->client_secret);
+    
+            // บันทึกการเปลี่ยนแปลง
             $lineNotify->save();
-
+    
             return response()->json($lineNotify);
         } else {
-            return response()->json(['message' => 'Line Notify not found'], 404);
+            return response()->json(['message' => 'Line Notify not found for this AcademicID'], 404);
         }
     }
+    
+
+
+
+
+
 
     /**
      * Remove the specified resource from storage.
@@ -120,7 +132,7 @@ class LineNotifyController extends Controller
     }
 
     /**
-     * Send notification to Line
+     * ส่งข้อความไปยัง LINE Notify
      */
     private function sendLineNotification($token, $message)
     {
@@ -137,4 +149,3 @@ class LineNotifyController extends Controller
         return $response;
     }
 }
-
