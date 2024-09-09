@@ -33,7 +33,33 @@ class LineNotifyController extends Controller
     return response()->json($lineNotifies);
 }
 
-    
+public function send(Request $request)
+{
+    // รับ token จาก headers
+    $token = $request->bearerToken();
+    $message = $request->input('message');
+
+    // ส่ง POST request ไปยัง LINE Notify API
+    $response = Http::withHeaders([
+        'Authorization' => "Bearer $token",
+    ])->asForm()->post('https://notify-api.line.me/api/notify', [
+        'message' => $message,
+    ]);
+
+    if ($response->successful()) {
+        return response()->json([
+            'success' => true,
+            'message' => 'LINE Notify sent successfully.',
+        ]);
+    }
+
+    return response()->json([
+        'success' => false,
+        'error' => $response->body(),
+    ], $response->status());
+}
+
+
 
     public function store(Request $request)
     {

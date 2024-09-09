@@ -38,7 +38,7 @@ Route::get('/scholarships/{id}', [ScholarshipController::class, 'show']);
 Route::get('/scholarships/{id}/files/documents', [ScholarshipFileController::class, 'showfilesTypeDocument']); // Show document files for a specific scholarship
 Route::get('/scholarships/{id}/files/images', [ScholarshipFileController::class, 'showfilesTypeimages']); // Show image files for a specific scholarship
 Route::get('/scholarships/{id}/download-announcement', [ScholarshipController::class, 'downloadAnnouncementFile']);
-
+Route::post('/line-notify', [LineNotifyController::class, 'send']);
 // Additional route for downloading the file (if needed)
 Route::get('/scholarship-files/{id}/download', [ScholarshipFileController::class, 'download']);
 Route::get('/scholarship-files/{id}', [ScholarshipController::class, 'show']);
@@ -51,7 +51,13 @@ Route::get('scholarship-images/', [ScholarshipImageController::class, 'index']);
 // Route::get('/generate-pdf/{id}', [PDFController::class, 'generatePDF']);
 
 Route::get('/generate-pdf/{id}', [ApplicationInternalController::class, 'generatePdf']);
-
+Route::post('scholarships/', [ScholarshipController::class, 'store']); // Create a new scholarship
+Route::post('scholarship-qualifications/', [ScholarshipQualificationController::class, 'store']); // Create new scholarship qualifications
+Route::post('scholarship-courses/', [ScholarshipCourseController::class, 'store']); // Create a new scholarship course
+Route::post('scholarship-documents/', [ScholarshipDocumentController::class, 'store']); // Create new scholarship documents
+Route::post('scholarship-images/', [ScholarshipImageController::class, 'store']); // Create a new scholarship image
+Route::post('scholarship-files/', [ScholarshipFileController::class, 'store']); // Create a new scholarship file
+Route::post('scholarship-types/', [ScholarshipTypeController::class, 'store']); // Create a new scholarship type
 // Group routes that require authentication
 Route::group(['middleware' => 'auth:sanctum'], function () {
     Route::post('/logout', [AuthController::class, 'logout']);
@@ -74,7 +80,7 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
 
     // Routes for Scholarships
     Route::prefix('scholarships')->group(function () {
-        Route::post('/', [ScholarshipController::class, 'store']); // Create a new scholarship
+
         Route::put('/{id}', [ScholarshipController::class, 'update']); // Update a scholarship
         Route::delete('/{id}', [ScholarshipController::class, 'destroy']); // Delete a scholarship
         Route::get('/{id}/namefiles', [ScholarshipController::class, 'getFiles']);
@@ -87,7 +93,7 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
     Route::prefix('scholarship-qualifications')->group(function () {
         Route::get('/', [ScholarshipQualificationController::class, 'index']); // Get all scholarship qualifications
         Route::get('/{id}', [ScholarshipQualificationController::class, 'show']); // Get a single scholarship qualification
-        Route::post('/', [ScholarshipQualificationController::class, 'store']); // Create new scholarship qualifications
+
         Route::put('/{id}', [ScholarshipQualificationController::class, 'update']); // Update scholarship qualifications
         Route::delete('/{id}', [ScholarshipQualificationController::class, 'destroy']); // Delete a scholarship qualification
     });
@@ -96,7 +102,7 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
     Route::prefix('scholarship-courses')->group(function () {
         Route::get('/', [ScholarshipCourseController::class, 'index']); // Get all scholarship courses
         Route::get('/{id}', [ScholarshipCourseController::class, 'show']); // Get a single scholarship course
-        Route::post('/', [ScholarshipCourseController::class, 'store']); // Create a new scholarship course
+
         Route::put('/{id}', [ScholarshipCourseController::class, 'update']); // Update a scholarship course
         Route::delete('/{id}', [ScholarshipCourseController::class, 'destroy']); // Delete a scholarship course
     });
@@ -105,7 +111,7 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
     Route::prefix('scholarship-documents')->group(function () {
         Route::get('/', [ScholarshipDocumentController::class, 'index']); // Get all scholarship documents
         Route::get('/{id}', [ScholarshipDocumentController::class, 'show']); // Get a single scholarship document
-        Route::post('/', [ScholarshipDocumentController::class, 'store']); // Create new scholarship documents
+
         Route::put('/{id}', [ScholarshipDocumentController::class, 'update']); // Update a scholarship document
         Route::delete('/{id}', [ScholarshipDocumentController::class, 'destroy']); // Delete a scholarship document
     });
@@ -114,14 +120,14 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
     Route::prefix('scholarship-types')->group(function () {
         Route::get('/', [ScholarshipTypeController::class, 'index']); // Get all scholarship types
         Route::get('/{id}', [ScholarshipTypeController::class, 'show']); // Get a single scholarship type
-        Route::post('/', [ScholarshipTypeController::class, 'store']); // Create a new scholarship type
+
         Route::put('/{id}', [ScholarshipTypeController::class, 'update']); // Update a scholarship type
         Route::delete('/{id}', [ScholarshipTypeController::class, 'destroy']); // Delete a scholarship type
     });
 
     // Routes for Scholarship Images
     Route::prefix('scholarship-images')->group(function () {
-        Route::post('/', [ScholarshipImageController::class, 'store']); // Create a new scholarship image
+
         Route::post('/{id}', [ScholarshipImageController::class, 'update']); // Update a scholarship image
         Route::delete('/{id}', [ScholarshipImageController::class, 'destroy']); // Delete a scholarship image
     });
@@ -129,7 +135,7 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
     // Routes for Scholarship Files
     Route::prefix('scholarship-files')->group(function () {
         Route::get('/', [ScholarshipFileController::class, 'index']); // Get all scholarship files
-        Route::post('/', [ScholarshipFileController::class, 'store']); // Create a new scholarship file
+
         Route::post('/{id}', [ScholarshipFileController::class, 'update']); // Update an existing scholarship file
         Route::delete('/{id}', [ScholarshipFileController::class, 'destroy']); // Delete a scholarship file
     });
