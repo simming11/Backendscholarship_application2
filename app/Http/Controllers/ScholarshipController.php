@@ -25,34 +25,51 @@ class ScholarshipController extends Controller
         return response()->json($scholarships);
     }
     
-    // Store a newly created scholarship in the database
-    public function store(Request $request)
-    {
-        $validatedData = $request->validate([
-            'ScholarshipName' => 'required|string|max:255',
-            'Year' => 'required|integer',
-            'Num_scholarship' => 'required|integer',
-            'Minimum_GPA' => 'required|numeric|between:0,4.0',
-            'YearLevel' => 'nullable|string|max:255',
-            'TypeID' => 'required|integer|exists:scholarship_types,TypeID',
-            'StartDate' => 'required|date',
-            'EndDate' => 'required|date',
-            'CreatedBy' => 'required|integer|exists:academics,AcademicID',
-            'AnnouncementFile' => 'nullable|file|mimes:pdf,doc,docx', // Validate AnnouncementFile if present
-        ]);
+// Store a newly created scholarship in the database
+public function store(Request $request)
+{
+    // Validate the request data
+    $validatedData = $request->validate([
+        'ScholarshipName' => 'required|string|max:255',
+        'Year' => 'required|integer',
+        'Num_scholarship' => 'required|integer',
+        'Minimum_GPA' => 'required|numeric|between:0,4.0',
+        'YearLevel' => 'nullable|string|max:255',
+        'TypeID' => 'required|integer|exists:scholarship_types,TypeID',
+        'StartDate' => 'required|date',
+        'EndDate' => 'required|date',
+        'CreatedBy' => 'required|integer|exists:academics,AcademicID',
+        'AnnouncementFile' => 'nullable|file|mimes:pdf,doc,docx', // Validate AnnouncementFile if present
+    ]);
 
-        // Handle file upload for AnnouncementFile
-        if ($request->hasFile('AnnouncementFile')) {
-            $file = $request->file('AnnouncementFile');
-            $originalFileName = $file->getClientOriginalName();
-            $filePath = $file->storeAs('uploads/announcements', $originalFileName, 'public');
-            $validatedData['AnnouncementFile'] = $filePath; // Save the file path to the database
-        }
+    // Check for duplicate scholarship with the same name and year
+    $duplicate = Scholarship::where('ScholarshipName', $validatedData['ScholarshipName'])
+        ->where('Year', $validatedData['Year'])
+        ->first();
 
-        $scholarship = Scholarship::create($validatedData);
-
-        return response()->json($scholarship, 201); // 201 Created
+    if ($duplicate) {
+        // Return a 409 Conflict response if a duplicate is found
+        return response()->json([
+            'error' => 'พบทุนการศึกษาซ้ำ ทุนการศึกษาชื่อนี้ในปีนี้มีอยู่แล้ว'
+        ], 409);
+        
     }
+
+    // Handle file upload for AnnouncementFile
+    if ($request->hasFile('AnnouncementFile')) {
+        $file = $request->file('AnnouncementFile');
+        $originalFileName = $file->getClientOriginalName();
+        $filePath = $file->storeAs('uploads/announcements', $originalFileName, 'public');
+        $validatedData['AnnouncementFile'] = $filePath; // Save the file path to the database
+    }
+
+    // Create the scholarship record
+    $scholarship = Scholarship::create($validatedData);
+
+    // Return a 201 Created response
+    return response()->json($scholarship, 201);
+}
+
 
     // Display the specified scholarship
     public function show($id)

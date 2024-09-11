@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Student;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class StudentController extends Controller
@@ -14,66 +15,75 @@ class StudentController extends Controller
         return response()->json($students);
     }
 
-// Store a newly created student in the database
-public function store(Request $request)
-{
-    // Custom validation rule for checking English characters only
-    $englishOnlyRule = function ($attribute, $value, $fail) {
-        if (!preg_match('/^[\p{L}\p{N}\p{P}\p{Z}]+$/u', $value)) {
-            $fail('ช่อง ' . $attribute . ' ต้องประกอบด้วยตัวอักษรภาษาอังกฤษเท่านั้น');
-        }
-    };
-
-    // Validate the request data
-    $validatedData = $request->validate([
-        'StudentID' => [
-            'required', 
-            'string', 
-            'max:255', 
-            'unique:students,StudentID', // Ensure StudentID is unique
-            $englishOnlyRule
-        ],
-        'Password' => ['required', 'string', 'min:8', $englishOnlyRule], // Apply the rule here as well
-        'FirstName' => ['required', 'string', 'max:255'],
-        'LastName' => ['required', 'string', 'max:255'],
-        'Email' => ['required', 'string', 'email', 'max:255', 'unique:students,Email', $englishOnlyRule],
-        'GPA' => ['required', 'numeric', 'between:0,4.0'],
-        'Year_Entry' => ['required', 'integer'],
-        'Religion' => ['required', 'string', 'max:255'],
-        'PrefixName' => ['required', 'string', 'max:255', $englishOnlyRule],
-        'Phone' => ['required', 'string', 'max:15', $englishOnlyRule],
-        'DOB' => ['required', 'date'],
-        'Course' => ['required', 'string', 'max:255'],
-    ], [
-        // Custom error messages
-        'required' => 'กรุณากรอก :attribute',
-        'string' => ':attribute ต้องเป็นข้อความ',
-        'max' => ':attribute ต้องไม่เกิน :max ตัวอักษร',
-        'unique' => ':attribute นี้ถูกใช้งานแล้ว', // Error message if StudentID or Email is not unique
-        'email' => ':attribute ต้องเป็นอีเมลที่ถูกต้อง',
-        'numeric' => ':attribute ต้องเป็นตัวเลข',
-        'between' => ':attribute ต้องมีค่าระหว่าง :min ถึง :max',
-        'integer' => ':attribute ต้องเป็นจำนวนเต็ม',
-        'min' => ':attribute ต้องมีอย่างน้อย :min ตัวอักษร',
-    ]);
-
-    // Encrypt the password before saving
-    $validatedData['Password'] = bcrypt($validatedData['Password']);
-
-    // Create the student record
-    $student = Student::create($validatedData);
-
-    // Create a token for the student
-    $token = $student->createToken($request->userAgent(), ['role' => 'student'])->plainTextToken;
-
-    // Log in the student by returning the token and user details
-    $response = [
-        'user' => $student,
-        'token' => $token,
-    ];
-
-    return response()->json($response, 201); // 201 Created
-}
+    public function store(Request $request)
+    {
+        // Custom validation rule for checking English characters only
+        $englishOnlyRule = function ($attribute, $value, $fail) {
+            if (!preg_match('/^[\p{L}\p{N}\p{P}\p{Z}]+$/u', $value)) {
+                $fail('ช่อง ' . $attribute . ' ต้องประกอบด้วยตัวอักษรภาษาอังกฤษเท่านั้น');
+            }
+        };
+    
+        // Validate the request data
+        $validatedData = $request->validate([
+            'StudentID' => [
+                'required', 
+                'string', 
+                'max:255', 
+                'unique:students,StudentID', // Ensure StudentID is unique
+                $englishOnlyRule
+            ],
+            'Password' => ['required', 'string', 'min:8', $englishOnlyRule], // Apply the rule here as well
+            'FirstName' => ['required', 'string', 'max:255'],
+            'LastName' => ['required', 'string', 'max:255'],
+            'Email' => ['required', 'string', 'email', 'max:255', 'unique:students,Email', $englishOnlyRule],
+            'GPA' => ['required', 'numeric', 'between:0,4.0'],
+            'Year_Entry' => ['required', 'integer'],
+            'Religion' => ['required', 'string', 'max:255'],
+            'PrefixName' => ['required', 'string', 'max:255', $englishOnlyRule],
+            'Phone' => ['required', 'string', 'max:15', $englishOnlyRule],
+            'DOB' => ['required', 'date_format:d/m/Y'], // Validate for "วัน/เดือน/ปี" format
+            'Course' => ['required', 'string', 'max:255'],
+        ], [
+            // Custom error messages
+            'required' => 'กรุณากรอก :attribute',
+            'string' => ':attribute ต้องเป็นข้อความ',
+            'max' => ':attribute ต้องไม่เกิน :max ตัวอักษร',
+            'unique' => ':attribute นี้ถูกใช้งานแล้ว', // Error message if StudentID or Email is not unique
+            'email' => ':attribute ต้องเป็นอีเมลที่ถูกต้อง',
+            'numeric' => ':attribute ต้องเป็นตัวเลข',
+            'between' => ':attribute ต้องมีค่าระหว่าง :min ถึง :max',
+            'integer' => ':attribute ต้องเป็นจำนวนเต็ม',
+            'min' => ':attribute ต้องมีอย่างน้อย :min ตัวอักษร',
+            'date_format' => ':attribute ต้องอยู่ในรูปแบบ d/m/Y', // Error for incorrect date format
+        ]);
+    
+        // Encrypt the password before saving
+        $validatedData['Password'] = bcrypt($validatedData['Password']);
+    
+        // Convert the "วัน/เดือน/ปี" format from the Buddhist year to the Gregorian year
+        $dobInBuddhistYear = $validatedData['DOB'];
+        $dobInGregorianYear = Carbon::createFromFormat('d/m/Y', $dobInBuddhistYear)
+            ->subYears(543) // Convert from Buddhist year to Gregorian year
+            ->toDateString();
+    
+        // Replace the DOB with the converted date
+        $validatedData['DOB'] = $dobInGregorianYear;
+    
+        // Create the student record
+        $student = Student::create($validatedData);
+    
+        // Create a token for the student
+        $token = $student->createToken($request->userAgent(), ['role' => 'student'])->plainTextToken;
+    
+        // Log in the student by returning the token and user details
+        $response = [
+            'user' => $student,
+            'token' => $token,
+        ];
+    
+        return response()->json($response, 201); // 201 Created
+    }
 
 
 
