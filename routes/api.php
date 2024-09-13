@@ -144,12 +144,12 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
 Route::prefix('application-files')->group(function () {
     Route::get('/', [ApplicationFileController::class, 'index']); // Get all application files
     Route::post('/', [ApplicationFileController::class, 'store']); // Create a new application file
-    Route::put('/{id}', [ApplicationFileController::class, 'update']); // Update an application file (using PUT instead of POST)
+    Route::post('/{id}', [ApplicationFileController::class, 'update']); // Update an application file
     Route::delete('/{id}', [ApplicationFileController::class, 'destroy']); // Delete an application file
 
     // Add route for storing external application files
     Route::post('/external', [ApplicationFileController::class, 'storeExternalApplicationFile']); // Create a new external application file
-    Route::get('/download/{id}', [ApplicationFileController::class, 'download']);
+    Route::get('/download/{id}', [ApplicationFileController::class, 'download']); // Route for downloading files
 });
 
 
@@ -175,6 +175,8 @@ Route::prefix('application-internals')->group(function () {
 
     // Filter applications by scholarship ID
     Route::get('/scholarship/{scholarshipId}', [ApplicationInternalController::class, 'filterByScholarshipId']);
+    Route::get('/student/{StudentID}/scholarship/{ScholarshipID}', [ApplicationInternalController::class, 'filterByStudentAndScholarshipId']);
+
     // Get students filtered by ScholarshipID
     Route::get('/scholarship/{scholarshipId}/students', [ApplicationInternalController::class, 'getStudentsByScholarshipId']);
 
@@ -238,7 +240,7 @@ Route::prefix('application-internals')->group(function () {
 
         Route::delete('/{id}', [ApplicationsExternalController::class, 'destroy']); // Delete an external application
         Route::get('/{id}/download/{fileName}', [ApplicationsExternalController::class, 'downloadFile']);
-
+        
         Route::get('/student/{studentId}', [ApplicationsExternalController::class, 'showByStudent']); // Get a single external application
         Route::get('/scholarship/{scholarshipId}/students', [ApplicationsExternalController::class, 'getStudentsByScholarshipId']);
 

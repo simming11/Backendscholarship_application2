@@ -20,8 +20,9 @@ class ScholarshipImageController extends Controller
         // ตรวจสอบข้อมูลที่ได้รับจากการส่งคำขอ
         $validatedData = $request->validate([
             'ScholarshipID' => 'required|integer|exists:scholarships,ScholarshipID',
-            'ImagePath' => 'required|file|mimes:jpg,png,jpeg|max:2048',
+            'ImagePath' => 'required|file|mimes:jpg,png,jpeg|max:20480',
             'Description' => 'nullable|string|max:255',
+            
         ]);
 
         // อัปโหลดไฟล์ภาพ
@@ -56,7 +57,7 @@ class ScholarshipImageController extends Controller
     {
         // ตรวจสอบข้อมูลที่ได้รับ
         $validatedData = $request->validate([
-            'ImagePath' => 'nullable|file|mimes:jpg,png,jpeg|max:2048',
+            'ImagePath' => 'nullable|file|mimes:jpg,png,jpeg|max:20480',
             'Description' => 'nullable|string|max:255',
         ]);
     

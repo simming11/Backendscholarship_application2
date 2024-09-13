@@ -14,51 +14,63 @@ class ApplicationFileController extends Controller
         $files = ApplicationFile::all();
         return response()->json($files);
     }
+// Store a newly created application file in the database
+public function store(Request $request)
+{
+    $validatedData = $request->validate([
+        'ApplicationID' => 'nullable|string|max:255',
+        'DocumentName' => 'nullable|string|max:255',
+        'DocumentType' => 'nullable|string|max:255',
+        'FilePath' => 'nullable|file|mimes:pdf,doc,docx,jpg,png|max:20480',
+    ]);
 
-    // Store a newly created application file in the database
-    public function store(Request $request)
-    {
-        $validatedData = $request->validate([
-            'ApplicationID' => 'nullable|string|max:255',
-            'DocumentName' => 'nullable|string|max:255',
-            'DocumentType' => 'nullable|string|max:255',
-            'FilePath' => 'nullable|file|mimes:pdf,doc,docx,jpg,png|max:2048',
-        ]);
-
-        // Handle the file upload
-        if ($request->hasFile('FilePath')) {
-            $file = $request->file('FilePath');
-            $originalFileName = $file->getClientOriginalName();
-            $filePath = $file->storeAs('uploads', $originalFileName, 'public');
-            $validatedData['FilePath'] = $filePath;
-        }
-
-        $applicationFile = ApplicationFile::create($validatedData);
-
-        return response()->json($applicationFile, 201); // 201 Created
+    // Handle the file upload
+    if ($request->hasFile('FilePath')) {
+        $file = $request->file('FilePath');
+        // รับเฉพาะชื่อไฟล์ต้นฉบับ
+        $originalFileName = $file->getClientOriginalName();
+        
+        // จัดเก็บไฟล์ในโฟลเดอร์ 'public/uploads' โดยใช้ชื่อไฟล์ต้นฉบับ
+        $file->storeAs('uploads', $originalFileName, 'public');
+        
+        // เก็บเฉพาะชื่อไฟล์ใน validatedData
+        $validatedData['FilePath'] = $originalFileName;
     }
 
-    // Store a newly created external application file in the database
+    // สร้างรายการในฐานข้อมูล
+    $applicationFile = ApplicationFile::create($validatedData);
+
+    // ส่งข้อมูลที่ถูกสร้างกลับไปพร้อมกับ HTTP status 201 Created
+    return response()->json($applicationFile, 201);
+}
+
+// Store a newly created external application file in the database
 public function storeExternalApplicationFile(Request $request)
 {
     $validatedData = $request->validate([
         'Application_EtID' => 'nullable|string|max:255',
         'DocumentName' => 'nullable|string|max:255',
         'DocumentType' => 'nullable|string|max:255',
-        'FilePath' => 'nullable|file|mimes:pdf,doc,docx,jpg,png|max:2048',
+        'FilePath' => 'nullable|file|mimes:pdf,doc,docx,jpg,png|max:20480', // Max size 20MB
     ]);
 
     // Handle the file upload
     if ($request->hasFile('FilePath')) {
         $file = $request->file('FilePath');
         $originalFileName = $file->getClientOriginalName();
-        $filePath = $file->storeAs('uploads', $originalFileName, 'public');
-        $validatedData['FilePath'] = $filePath;
+        
+        // Store the file in the 'public/uploads' directory and get the stored path
+        $file->storeAs('uploads', $originalFileName, 'public');
+        
+        // Save only the original file name in the validatedData array
+        $validatedData['FilePath'] = $originalFileName;
     }
 
+    // Create a new entry in the application_files table
     $applicationFile = ApplicationFile::create($validatedData);
 
-    return response()->json($applicationFile, 201); // 201 Created
+    // Return the created application file with a 201 response code
+    return response()->json($applicationFile, 201);
 }
 
 
@@ -84,90 +96,115 @@ public function storeExternalApplicationFile(Request $request)
         return response()->json($files);
     }
 
-// Update the specified application files in the database
-public function update(Request $request, $id)
+    public function update(Request $request, $id)
+    {
+        // Validate the incoming request data
+        $validatedDataArray = $request->validate([
+            'ApplicationID' => 'nullable|string|max:255',
+            'application_files' => 'nullable|array', // Expecting array of files, can be empty
+            'application_files.*.DocumentType' => 'nullable|string|max:255', // Validate DocumentType
+            'application_files.*.DocumentName' => 'nullable|string|max:255', // Validate DocumentName
+            'application_files.*.FilePath' => 'nullable|file|mimes:pdf,doc,docx,jpg,png|max:20480', // Expect a file or keep the existing path
+            'application_files.*.ApplicationID' => 'nullable|string|max:255', // Validate ApplicationID
+        ]);
+    
+        $applicationID = $validatedDataArray['ApplicationID'] ?? $id;
+    
+        // Retrieve all existing files related to the ApplicationID and delete them
+        $existingFiles = ApplicationFile::where('ApplicationID', $applicationID)->get();
+    
+        foreach ($existingFiles as $existingFile) {
+            // Delete the file from storage if it exists
+            if (Storage::disk('public')->exists('uploads/' . $existingFile->FilePath)) {
+                Storage::disk('public')->delete('uploads/' . $existingFile->FilePath);
+            }
+            // Delete the file record from the database
+            $existingFile->delete();
+        }
+    
+        // Check if new files are being uploaded
+        if (isset($validatedDataArray['application_files']) && count($validatedDataArray['application_files']) > 0) {
+            foreach ($validatedDataArray['application_files'] as $index => $fileData) {
+                $fileToSave = [
+                    'ApplicationID' => $fileData['ApplicationID'] ?? $applicationID,
+                    'DocumentType' => $fileData['DocumentType'] ?? '',
+                    'DocumentName' => $fileData['DocumentName'] ?? null,
+                ];
+    
+                // Check if a new file is being uploaded
+                if ($request->hasFile("application_files.{$index}.FilePath")) {
+                    $file = $request->file("application_files.{$index}.FilePath");
+                    $originalFileName = $file->getClientOriginalName();
+    
+                    // Store the file in the 'uploads' directory and save the **original** file name
+                    $file->storeAs('uploads', $originalFileName, 'public');
+    
+                    // Store only the file name in the database
+                    $fileToSave['FilePath'] = $originalFileName;
+                } else {
+                    // Keep the existing file path if no new file is uploaded
+                    $fileToSave['FilePath'] = $fileData['FilePath'];
+                }
+    
+                // Create a new file record in the database
+                ApplicationFile::create($fileToSave);
+            }
+        }
+    
+        return response()->json(['message' => 'Files updated successfully']);
+    }
+    
+    
+
+
+
+// Delete the specified application file from storage and database
+public function destroy($id, $filePath)
 {
-    // Validate the incoming request data
-    $validatedDataArray = $request->validate([
-        'ApplicationID' => 'nullable|string|max:255',
-        'FileTypes' => 'required|array', // Validate that FileTypes is an array
-        'FileTypes.*' => 'string|max:255', // Each FileType should be a string
-        'FilePaths' => 'required|array', // Validate that FilePaths is an array
-        'FilePaths.*' => 'file|mimes:pdf,doc,docx,jpg,png|max:2048', // Ensure each file is uploaded and validated
-        'DocumentNames' => 'nullable|array', // Allow document names for each file
-        'DocumentNames.*' => 'string|max:255',
-    ]);
+    // ดึงข้อมูลไฟล์ที่ต้องการลบตาม ID
+    $applicationFile = ApplicationFile::findOrFail($id);
 
-    // Retrieve the ApplicationID, default to the $id passed in URL if not provided in the request
-    $applicationID = $validatedDataArray['ApplicationID'] ?? $id;
-
-    // Retrieve all existing files related to the ApplicationID
-    $existingFiles = ApplicationFile::where('ApplicationID', $applicationID)->get();
-
-    // Loop through each existing file to delete them from storage and the database
-    foreach ($existingFiles as $existingFile) {
-        // Delete the file from storage
-        if (Storage::disk('public')->exists($existingFile->FilePath)) {
-            Storage::disk('public')->delete($existingFile->FilePath);
+    // ตรวจสอบว่า FilePath ที่ส่งมานั้นตรงกับข้อมูลที่มีในฐานข้อมูลหรือไม่
+    if ($applicationFile->FilePath === $filePath) {
+        // ตรวจสอบว่าไฟล์นั้นมีอยู่ในระบบไฟล์หรือไม่
+        if (Storage::disk('public')->exists($applicationFile->FilePath)) {
+            // ลบไฟล์ออกจาก storage
+            Storage::disk('public')->delete($applicationFile->FilePath);
         }
 
-        // Delete the file record from the database
-        $existingFile->delete();
+        // ลบข้อมูลไฟล์ออกจากฐานข้อมูล
+        $applicationFile->delete();
+
+        return response()->json(['message' => 'File deleted successfully']);
+    } else {
+        // หาก FilePath ไม่ตรงกันให้ส่งข้อความแสดงข้อผิดพลาด
+        return response()->json(['error' => 'File path does not match.'], 400);
     }
-
-    // Loop through each provided FilePath to store the new files
-    foreach ($validatedDataArray['FilePaths'] as $index => $newFile) {
-        // Store the new file
-        $originalFileName = $newFile->getClientOriginalName();
-        $filePath = $newFile->storeAs('uploads', $originalFileName, 'public');
-
-        // Prepare data for creating a new file entry
-        $fileData = [
-            'ApplicationID' => $applicationID,
-            'DocumentType' => $validatedDataArray['FileTypes'][$index] ?? '',
-            'FilePath' => $filePath,
-            'DocumentName' => $validatedDataArray['DocumentNames'][$index] ?? null,
-        ];
-
-        // Create a new file entry in the database
-        ApplicationFile::create($fileData);
-    }
-
-    return response()->json(['message' => 'Files updated successfully']);
 }
 
 
+// Download the specified application file
+public function download($id)
+{
+    // Find the file from the database using the ID
+    $file = ApplicationFile::findOrFail($id);
 
+    // Define the full path to the file within the 'uploads' directory
+    $fullFilePath = 'uploads/' . $file->FilePath;
 
-    // Remove the specified application file from the database
-    public function destroy($id)
-    {
-        $file = ApplicationFile::findOrFail($id);
-
-        // Optionally, delete the file from storage
-        if ($file->FilePath) {
-            Storage::disk('public')->delete($file->FilePath);
-        }
-
-        $file->delete();
-
-        return response()->json(null, 204); // 204 No Content
+    // Check if the file exists in the storage under the 'public' disk
+    if (!$file || !Storage::disk('public')->exists($fullFilePath)) {
+        return response()->json(['error' => 'File not found.'], 404);
     }
 
-    // Download the specified application file
-    public function download($id)
-    {
-        $file = ApplicationFile::findOrFail($id);
+    // Get the full path of the file
+    $filePath = Storage::disk('public')->path($fullFilePath);
+    $originalFileName = basename($file->FilePath);
 
-        if (!$file || !Storage::disk('public')->exists($file->FilePath)) {
-            return response()->json(['error' => 'File not found.'], 404);
-        }
+    // Return the file as a downloadable response
+    return response()->download($filePath, $originalFileName, [
+        'Content-Disposition' => 'attachment; filename="' . $originalFileName . '"',
+    ]);
+}
 
-        $filePath = Storage::disk('public')->path($file->FilePath);
-        $originalFileName = basename($file->FilePath);
-
-        return response()->download($filePath, $originalFileName, [
-            'Content-Disposition' => 'attachment; filename="' . $originalFileName . '"',
-        ]);
-    }
 }

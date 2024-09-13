@@ -14,6 +14,20 @@ class ApplicationsExternalController extends Controller
         return response()->json($applications);
     }
 
+        // Display the specified application internal based on StudentID
+        public function showByStudentId($studentId)
+        {
+            $applications = ApplicationsExternal::with([
+                'student',
+                'scholarship',
+                'applicationFiles'
+            ])
+            ->where('StudentID', $studentId) // Filter by StudentID
+            ->get(); // Get all results that match the StudentID
+        
+            return response()->json($applications);
+        }
+
 // Store a newly created external application in the database
     public function store(Request $request)
     {

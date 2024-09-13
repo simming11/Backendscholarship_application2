@@ -50,7 +50,28 @@ class ApplicationInternalController extends Controller
         return response()->json($applications);
     }
     
+    public function filterByStudentAndScholarshipId($studentId, $scholarshipId)
+    {
+        // Query applications and filter by student ID and scholarship ID
+        $applications = ApplicationInternal::with([
+            'student',
+            'scholarship',
+            'applicationFiles',
+            'addresses',
+            'siblings',
+            'scholarshipHistories',
+            'guardians',
+            'activities',
+            'workExperiences',
+        ])
+        ->where('StudentID', $studentId) // Filter by StudentID
+        ->where('ScholarshipID', $scholarshipId) // Filter by ScholarshipID
+        ->get(); // Get all results that match both StudentID and ScholarshipID
     
+        return response()->json($applications);
+    }
+    
+
     
 
 
@@ -192,8 +213,6 @@ public function updateApplicationInternal(Request $request, $id) {
     }
     return response()->json(['error' => 'Application not found.'], 404);
 }
-
-
 
 
     // Display the specified application internal

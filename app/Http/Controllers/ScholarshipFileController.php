@@ -22,7 +22,7 @@ class ScholarshipFileController extends Controller
         $validatedData = $request->validate([
             'ScholarshipID' => 'required|integer|exists:scholarships,ScholarshipID',
             'FileType' => 'required|string|max:255',
-            'FilePath' => 'required|file|mimes:pdf,doc,docx,jpg,png|max:2048', // Ensure the file is uploaded and validated
+            'FilePath' => 'required|file|mimes:pdf,doc,docx,jpg,png|max:max:20480', // Ensure the file is uploaded and validated
             'Description' => 'nullable|string|max:255',
         ]);
 
@@ -89,7 +89,7 @@ public function update(Request $request, $id)
         'FileTypes' => 'required|array', // Validate that FileTypes is an array
         'FileTypes.*' => 'string|max:255', // Each FileType should be a string
         'FilePaths' => 'required|array', // Validate that FilePaths is an array
-        'FilePaths.*' => 'file|mimes:pdf,doc,docx,jpg,png|max:2048', // Ensure each file is uploaded and validated
+        'FilePaths.*' => 'file|mimes:pdf,doc,docx,jpg,png|max:20480', // Ensure each file is uploaded and validated
         'Descriptions' => 'nullable|array', // Allow descriptions for each file
         'Descriptions.*' => 'string|max:255',
     ]);
