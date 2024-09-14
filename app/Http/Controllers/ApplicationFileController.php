@@ -96,63 +96,93 @@ public function storeExternalApplicationFile(Request $request)
         return response()->json($files);
     }
 
+    
     public function update(Request $request, $id)
     {
-        // Validate the incoming request data
         $validatedDataArray = $request->validate([
             'ApplicationID' => 'nullable|string|max:255',
-            'application_files' => 'nullable|array', // Expecting array of files, can be empty
+            'application_files' => 'nullable|array', // Expecting an array of files
             'application_files.*.DocumentType' => 'nullable|string|max:255', // Validate DocumentType
             'application_files.*.DocumentName' => 'nullable|string|max:255', // Validate DocumentName
-            'application_files.*.FilePath' => 'nullable|file|mimes:pdf,doc,docx,jpg,png|max:20480', // Expect a file or keep the existing path
+            'application_files.*.FilePath' => 'nullable|file|mimes:pdf,doc,docx,jpg,png|max:20480', // Only validate uploaded files
+            'application_files.*.ExistingFilePath' => 'nullable|string|max:255', // Path for existing files
             'application_files.*.ApplicationID' => 'nullable|string|max:255', // Validate ApplicationID
         ]);
     
         $applicationID = $validatedDataArray['ApplicationID'] ?? $id;
     
-        // Retrieve all existing files related to the ApplicationID and delete them
+        // Fetch all existing files related to the ApplicationID
         $existingFiles = ApplicationFile::where('ApplicationID', $applicationID)->get();
     
+        // Collect the DocumentNames of files sent in the request
+        $incomingDocumentNames = collect($validatedDataArray['application_files'])->pluck('DocumentName')->toArray();
+    
+        // Delete files from the database that are not in the incoming request
         foreach ($existingFiles as $existingFile) {
-            // Delete the file from storage if it exists
-            if (Storage::disk('public')->exists('uploads/' . $existingFile->FilePath)) {
-                Storage::disk('public')->delete('uploads/' . $existingFile->FilePath);
+            if (!in_array($existingFile->DocumentName, $incomingDocumentNames)) {
+                // Delete the file from storage
+                if (Storage::disk('public')->exists('uploads/' . $existingFile->FilePath)) {
+                    Storage::disk('public')->delete('uploads/' . $existingFile->FilePath);
+                }
+    
+                // Delete the record from the database
+                $existingFile->delete();
             }
-            // Delete the file record from the database
-            $existingFile->delete();
         }
     
-        // Check if new files are being uploaded
+        // Now process the incoming files
         if (isset($validatedDataArray['application_files']) && count($validatedDataArray['application_files']) > 0) {
             foreach ($validatedDataArray['application_files'] as $index => $fileData) {
+                // Check if the file already exists in the database
+                $existingFile = $existingFiles->where('DocumentName', $fileData['DocumentName'])->first();
+    
                 $fileToSave = [
                     'ApplicationID' => $fileData['ApplicationID'] ?? $applicationID,
                     'DocumentType' => $fileData['DocumentType'] ?? '',
                     'DocumentName' => $fileData['DocumentName'] ?? null,
                 ];
     
-                // Check if a new file is being uploaded
+                // If a new file is uploaded
                 if ($request->hasFile("application_files.{$index}.FilePath")) {
                     $file = $request->file("application_files.{$index}.FilePath");
                     $originalFileName = $file->getClientOriginalName();
     
-                    // Store the file in the 'uploads' directory and save the **original** file name
+                    // Store the new file in the 'uploads' directory
                     $file->storeAs('uploads', $originalFileName, 'public');
     
-                    // Store only the file name in the database
+                    // Store the new file name in the database
                     $fileToSave['FilePath'] = $originalFileName;
-                } else {
-                    // Keep the existing file path if no new file is uploaded
-                    $fileToSave['FilePath'] = $fileData['FilePath'];
-                }
     
-                // Create a new file record in the database
-                ApplicationFile::create($fileToSave);
+                    // If the file already exists, update it
+                    if ($existingFile) {
+                        if (Storage::disk('public')->exists('uploads/' . $existingFile->FilePath)) {
+                            Storage::disk('public')->delete('uploads/' . $existingFile->FilePath);
+                        }
+                        $existingFile->update($fileToSave);
+                    } else {
+                        ApplicationFile::create($fileToSave);
+                    }
+                } else {
+                    // If no new file is uploaded, use the existing file path
+                    $fileToSave['FilePath'] = $fileData['ExistingFilePath'];
+    
+                    // If an existing file record is found, update it, otherwise create a new record
+                    if ($existingFile) {
+                        $existingFile->update($fileToSave);
+                    } else {
+                        ApplicationFile::create($fileToSave);
+                    }
+                }
             }
         }
     
         return response()->json(['message' => 'Files updated successfully']);
     }
+    
+    
+    
+    
+    
     
     
 
