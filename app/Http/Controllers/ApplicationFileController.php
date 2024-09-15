@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ApplicationFile;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 class ApplicationFileController extends Controller
@@ -14,6 +15,50 @@ class ApplicationFileController extends Controller
         $files = ApplicationFile::all();
         return response()->json($files);
     }
+
+
+
+    public function storeExternalApplicationFile(Request $request)
+    {
+        // ตรวจสอบว่ามีไฟล์ถูกส่งมาในคำขอหรือไม่
+        if (!$request->hasFile('FilePath')) {
+            // บันทึก log ไฟล์ที่ไม่ถูกส่งมา
+            Log::error('No files were uploaded.');
+            return response()->json(['error' => 'No files found'], 400);
+        }
+    
+        // Validate incoming data including Application_EtID
+        $validatedData = $request->validate([
+            'Application_EtID' => 'required|string|max:255',  // Ensure Application_EtID is required
+            'DocumentName' => 'required|string|max:255',
+            'DocumentType' => 'required|string|max:255',
+            'FilePath' => 'required|file|mimes:pdf,doc,docx,jpg,png|max:20480',
+        ]);
+    
+        // Handle the file upload
+        $file = $request->file('FilePath');
+        $originalFileName = $file->getClientOriginalName();
+    
+        // Store the file in the 'public/uploads' directory
+        $file->storeAs('uploads', $originalFileName, 'public');
+    
+        // Save only the original file name in the validatedData array
+        $validatedData['FilePath'] = $originalFileName;
+    
+        // Create a new entry in the application_files table with Application_EtID only
+        $applicationFile = ApplicationFile::create([
+            'Application_EtID' => $validatedData['Application_EtID'],
+            'DocumentName' => $validatedData['DocumentName'],
+            'DocumentType' => $validatedData['DocumentType'],
+            'FilePath' => $validatedData['FilePath'],
+        ]);
+    
+        // Return the created application file with a 201 response code
+        return response()->json($applicationFile, 201);
+    }
+    
+    
+
 // Store a newly created application file in the database
 public function store(Request $request)
 {
@@ -44,34 +89,8 @@ public function store(Request $request)
     return response()->json($applicationFile, 201);
 }
 
-// Store a newly created external application file in the database
-public function storeExternalApplicationFile(Request $request)
-{
-    $validatedData = $request->validate([
-        'Application_EtID' => 'nullable|string|max:255',
-        'DocumentName' => 'nullable|string|max:255',
-        'DocumentType' => 'nullable|string|max:255',
-        'FilePath' => 'nullable|file|mimes:pdf,doc,docx,jpg,png|max:20480', // Max size 20MB
-    ]);
 
-    // Handle the file upload
-    if ($request->hasFile('FilePath')) {
-        $file = $request->file('FilePath');
-        $originalFileName = $file->getClientOriginalName();
-        
-        // Store the file in the 'public/uploads' directory and get the stored path
-        $file->storeAs('uploads', $originalFileName, 'public');
-        
-        // Save only the original file name in the validatedData array
-        $validatedData['FilePath'] = $originalFileName;
-    }
 
-    // Create a new entry in the application_files table
-    $applicationFile = ApplicationFile::create($validatedData);
-
-    // Return the created application file with a 201 response code
-    return response()->json($applicationFile, 201);
-}
 
 
 
@@ -109,69 +128,55 @@ public function storeExternalApplicationFile(Request $request)
             'application_files.*.ApplicationID' => 'nullable|string|max:255', // Validate ApplicationID
         ]);
     
+        // ตรวจสอบว่ามีข้อมูลส่งมาหรือไม่
+        if (!isset($validatedDataArray['application_files'])) {
+            return response()->json(['error' => 'No files found'], 400);
+        }
+    
+        // ดำเนินการเก็บข้อมูลต่อ
         $applicationID = $validatedDataArray['ApplicationID'] ?? $id;
-    
-        // Fetch all existing files related to the ApplicationID
         $existingFiles = ApplicationFile::where('ApplicationID', $applicationID)->get();
-    
-        // Collect the DocumentNames of files sent in the request
         $incomingDocumentNames = collect($validatedDataArray['application_files'])->pluck('DocumentName')->toArray();
     
-        // Delete files from the database that are not in the incoming request
+        // ลบไฟล์ที่ไม่มีในคำขอ
         foreach ($existingFiles as $existingFile) {
             if (!in_array($existingFile->DocumentName, $incomingDocumentNames)) {
-                // Delete the file from storage
                 if (Storage::disk('public')->exists('uploads/' . $existingFile->FilePath)) {
                     Storage::disk('public')->delete('uploads/' . $existingFile->FilePath);
                 }
-    
-                // Delete the record from the database
                 $existingFile->delete();
             }
         }
     
-        // Now process the incoming files
-        if (isset($validatedDataArray['application_files']) && count($validatedDataArray['application_files']) > 0) {
-            foreach ($validatedDataArray['application_files'] as $index => $fileData) {
-                // Check if the file already exists in the database
-                $existingFile = $existingFiles->where('DocumentName', $fileData['DocumentName'])->first();
+        // เพิ่มหรืออัพเดตไฟล์ใหม่
+        foreach ($validatedDataArray['application_files'] as $index => $fileData) {
+            $existingFile = $existingFiles->where('DocumentName', $fileData['DocumentName'])->first();
+            $fileToSave = [
+                'ApplicationID' => $fileData['ApplicationID'] ?? $applicationID,
+                'DocumentType' => $fileData['DocumentType'] ?? '',
+                'DocumentName' => $fileData['DocumentName'] ?? null,
+            ];
     
-                $fileToSave = [
-                    'ApplicationID' => $fileData['ApplicationID'] ?? $applicationID,
-                    'DocumentType' => $fileData['DocumentType'] ?? '',
-                    'DocumentName' => $fileData['DocumentName'] ?? null,
-                ];
+            if ($request->hasFile("application_files.{$index}.FilePath")) {
+                $file = $request->file("application_files.{$index}.FilePath");
+                $originalFileName = $file->getClientOriginalName();
+                $file->storeAs('uploads', $originalFileName, 'public');
+                $fileToSave['FilePath'] = $originalFileName;
     
-                // If a new file is uploaded
-                if ($request->hasFile("application_files.{$index}.FilePath")) {
-                    $file = $request->file("application_files.{$index}.FilePath");
-                    $originalFileName = $file->getClientOriginalName();
-    
-                    // Store the new file in the 'uploads' directory
-                    $file->storeAs('uploads', $originalFileName, 'public');
-    
-                    // Store the new file name in the database
-                    $fileToSave['FilePath'] = $originalFileName;
-    
-                    // If the file already exists, update it
-                    if ($existingFile) {
-                        if (Storage::disk('public')->exists('uploads/' . $existingFile->FilePath)) {
-                            Storage::disk('public')->delete('uploads/' . $existingFile->FilePath);
-                        }
-                        $existingFile->update($fileToSave);
-                    } else {
-                        ApplicationFile::create($fileToSave);
+                if ($existingFile) {
+                    if (Storage::disk('public')->exists('uploads/' . $existingFile->FilePath)) {
+                        Storage::disk('public')->delete('uploads/' . $existingFile->FilePath);
                     }
+                    $existingFile->update($fileToSave);
                 } else {
-                    // If no new file is uploaded, use the existing file path
-                    $fileToSave['FilePath'] = $fileData['ExistingFilePath'];
-    
-                    // If an existing file record is found, update it, otherwise create a new record
-                    if ($existingFile) {
-                        $existingFile->update($fileToSave);
-                    } else {
-                        ApplicationFile::create($fileToSave);
-                    }
+                    ApplicationFile::create($fileToSave);
+                }
+            } else {
+                $fileToSave['FilePath'] = $fileData['ExistingFilePath'];
+                if ($existingFile) {
+                    $existingFile->update($fileToSave);
+                } else {
+                    ApplicationFile::create($fileToSave);
                 }
             }
         }
@@ -185,9 +190,6 @@ public function storeExternalApplicationFile(Request $request)
     
     
     
-
-
-
 // Delete the specified application file from storage and database
 public function destroy($id, $filePath)
 {

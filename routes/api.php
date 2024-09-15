@@ -144,14 +144,13 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
 Route::prefix('application-files')->group(function () {
     Route::get('/', [ApplicationFileController::class, 'index']); // Get all application files
     Route::post('/', [ApplicationFileController::class, 'store']); // Create a new application file
-    Route::post('/{id}', [ApplicationFileController::class, 'update']); // Update an application file
     Route::delete('/{id}', [ApplicationFileController::class, 'destroy']); // Delete an application file
-
+    
     // Add route for storing external application files
-    Route::post('/external', [ApplicationFileController::class, 'storeExternalApplicationFile']); // Create a new external application file
+    Route::post('/external', [ApplicationFileController::class, 'storeExternalApplicationFile']);
+    Route::post('/{id}', [ApplicationFileController::class, 'update']); // Update an application file
     Route::get('/download/{id}', [ApplicationFileController::class, 'download']); // Route for downloading files
 });
-
 
 
     // Routes for Scholarship History

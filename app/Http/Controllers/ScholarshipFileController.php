@@ -22,7 +22,7 @@ class ScholarshipFileController extends Controller
         $validatedData = $request->validate([
             'ScholarshipID' => 'required|integer|exists:scholarships,ScholarshipID',
             'FileType' => 'required|string|max:255',
-            'FilePath' => 'required|file|mimes:pdf,doc,docx,jpg,png|max:max:20480', // Ensure the file is uploaded and validated
+            'FilePath' => 'required|file|mimes:pdf,doc,docx,jpg,png|max:20480', // Ensure the file is uploaded and validated
             'Description' => 'nullable|string|max:255',
         ]);
 
