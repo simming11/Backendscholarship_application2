@@ -23,6 +23,7 @@ class Scholarship extends Model
         'StartDate',           // Start date for the scholarship
         'EndDate',             // End date for the scholarship
         'CreatedBy',           // Who created the scholarship (foreign key for academic user)
+        'status',
         'AnnouncementFile',    // File path for the announcement
     ];
 

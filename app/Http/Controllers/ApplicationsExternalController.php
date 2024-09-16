@@ -7,12 +7,18 @@ use Illuminate\Http\Request;
 
 class ApplicationsExternalController extends Controller
 {
-    // Display a listing of the external applications
-    public function index()
-    {
-        $applications = ApplicationsExternal::all();
-        return response()->json($applications);
-    }
+
+        // Display a listing of the application internals
+        public function index()
+        {
+            $applications = ApplicationsExternal::with([
+                'student',
+                'scholarship',
+                'applicationFiles'
+            ])->get();
+    
+            return response()->json($applications);
+        }
 
         // Display the specified application internal based on StudentID
         public function showByStudentId($studentId)

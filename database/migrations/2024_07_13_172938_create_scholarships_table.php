@@ -20,6 +20,7 @@ return new class extends Migration
             $table->date('EndDate');
             $table->string('CreatedBy');
             $table->string('AnnouncementFile')->nullable(); // Add file upload field for announcements
+            $table->string('status')->nullable();
             $table->timestamps();
             
             $table->foreign('TypeID')->references('TypeID')->on('scholarship_types')->onDelete('cascade');

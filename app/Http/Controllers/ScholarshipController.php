@@ -8,22 +8,25 @@ use Illuminate\Support\Facades\Storage;
 
 class ScholarshipController extends Controller
 {
-    // Display a listing of scholarships
-    public function index()
-    {
-        // Eager load related models with specific fields
-        $scholarships = Scholarship::with([
-            'creator:AcademicID', // Load only the AcademicID from the creator
-            'type:TypeID,TypeName', // Load only TypeID and TypeName from the type
-            'qualifications:ScholarshipID,QualificationID,QualificationText,IsActive', // Load relevant fields from qualifications, including IsActive
-            'documents:ScholarshipID,DocumentID,DocumentText,IsActive', // Load relevant fields from documents, including IsActive
-            'courses:ScholarshipID,CourseID,CourseName', // Load relevant fields from courses
-            'files:ScholarshipID,FileID,FilePath,FileType', // Load relevant fields from files
-            'images:ScholarshipID,ImageID,ImagePath' // Load relevant fields from images
-        ])->get();
-    
-        return response()->json($scholarships);
-    }
+// Display a listing of scholarships
+public function index()
+{
+    // Eager load related models with specific fields and order by 'created_at' in descending order
+    $scholarships = Scholarship::with([
+        'creator:AcademicID', // Load only the AcademicID from the creator
+        'type:TypeID,TypeName', // Load only TypeID and TypeName from the type
+        'qualifications:ScholarshipID,QualificationID,QualificationText,IsActive', // Load relevant fields from qualifications, including IsActive
+        'documents:ScholarshipID,DocumentID,DocumentText,IsActive', // Load relevant fields from documents, including IsActive
+        'courses:ScholarshipID,CourseID,CourseName', // Load relevant fields from courses
+        'files:ScholarshipID,FileID,FilePath,FileType', // Load relevant fields from files
+        'images:ScholarshipID,ImageID,ImagePath' // Load relevant fields from images
+    ])
+    ->orderBy('created_at', 'desc') // Order by 'created_at' descending
+    ->get();
+
+    return response()->json($scholarships);
+}
+
     
 // Store a newly created scholarship in the database
 public function store(Request $request)
@@ -39,6 +42,7 @@ public function store(Request $request)
         'StartDate' => 'required|date',
         'EndDate' => 'required|date',
         'CreatedBy' => 'required|integer|exists:academics,AcademicID',
+        'status' => 'sometimes|string|max:255',
         'AnnouncementFile' => 'nullable|file|mimes:pdf,doc,docx', // Validate AnnouncementFile if present
     ]);
 
@@ -100,6 +104,7 @@ public function store(Request $request)
             'StartDate' => 'sometimes|required|date',
             'EndDate' => 'sometimes|required|date',
             'CreatedBy' => 'sometimes|required|integer|exists:academics,AcademicID',
+            'status' => 'sometimes|string|max:255',
             'AnnouncementFile' => 'nullable|file|mimes:pdf,doc,docx', // Validate AnnouncementFile if present
         ]);
 
