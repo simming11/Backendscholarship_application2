@@ -64,7 +64,6 @@ class StudentController extends Controller
         // Convert the "วัน/เดือน/ปี" format from the Buddhist year to the Gregorian year
         $dobInBuddhistYear = $validatedData['DOB'];
         $dobInGregorianYear = Carbon::createFromFormat('d/m/Y', $dobInBuddhistYear)
-            ->subYears(543) // Convert from Buddhist year to Gregorian year
             ->toDateString();
     
         // Replace the DOB with the converted date
